@@ -1,0 +1,188 @@
+# coding:utf-8
+
+import torch
+import os
+import argparse
+import time
+import numpy as np
+
+from core.model_fusion import Fusion_Network3_ac, Network3
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+import torch.nn.functional as F
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+# from model_TII import BiSeNet
+from TaskFusion_dataset2 import Fusion_dataset
+# from FusionNet import FusionNet
+from tqdm import tqdm
+from torch.autograd import Variable
+from PIL import Image
+import os, argparse, time, datetime, sys, shutil, stat
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+
+# from model_fusion_seg_tzy4 import Network
+from util.MF_dataset import MF_dataset
+from util.util import compute_results, visualize
+from sklearn.metrics import confusion_matrix
+from scipy.io import savemat
+from omegaconf import OmegaConf
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--config",
+                    default='configs/voc.yaml',
+                    type=str,
+                    help="config")
+parser.add_argument("--local_rank", default=0, type=int, help="local_rank")
+parser.add_argument('--backend', default='nccl')
+parser.add_argument('--model_name', '-M', type=str, default='SeAFusion')
+parser.add_argument('--batch_size', '-B', type=int, default=1)
+parser.add_argument('--gpu', '-G', type=int, default=0)
+parser.add_argument('--num_workers', '-j', type=int, default=8)
+args = parser.parse_args()
+cfg = OmegaConf.load(args.config)
+
+
+def val_fusion_train(model,model2, epoch):
+    conf_total = np.zeros((9, 9))
+
+    n_classes = 9
+    score_thres = 0.7
+    ignore_idx = 255
+    h = 480
+    w = 640
+
+    image_size = (h, w)
+    n_min = 8 * 640 * 480 // 8
+
+    device = torch.device("cuda:0")
+
+    model.eval().to(device)
+    model2.eval().to(device)
+
+    # model.load_state_dict(torch.load(fusion_model_path))
+    print('fusionmodel load done!')
+    vi_path = '/user33/objectdetection/test_all/Visible/'
+    ir_path = '/user33/objectdetection/test_all/Infrared/'
+    label_path = '/user33/objectdetection/test_all/Label/'
+    mask_path = '/user33/objectdetection/test_all/Mask2/'
+
+    test_dataset = Fusion_dataset('val', ir_path=ir_path, vi_path=vi_path, label_path=label_path)
+    # test_dataset = Fusion_dataset('val')
+    test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=False,
+    )
+    test_loader.n_iter = len(test_loader)
+    with torch.no_grad():
+        for it, (images_vis, images_ir, label, name) in enumerate(test_loader):
+            images_vis = Variable(images_vis)
+            images_ir = Variable(images_ir)
+            if args.gpu >= 0:
+                images_vis = images_vis.to(device)
+                images_ir = images_ir.to(device)
+                ## RGB to tensor
+                image_mask = np.array(Image.open(mask_path + name[0]))[:, :, np.newaxis]
+                image_mask = np.concatenate([image_mask, image_mask, image_mask], axis=2)
+                image_mask = (
+                        np.asarray(Image.fromarray(image_mask), dtype=np.float32).transpose(
+                            (2, 0, 1)
+                        )
+                        / 255.0
+                )
+                image_mask = np.expand_dims(image_mask, axis=0)
+                image_mask = torch.tensor(image_mask).cuda()
+                out0, out1 = model2.denoise_net.encoder.forward_fusion(image_mask)
+                image_fusion = model(images_ir, images_vis,out0,out1)
+                images_vis_ycrcb = RGB2YCrCb(images_vis)
+                fusion_ycrcb = torch.cat(
+                    (image_fusion, images_vis_ycrcb[:, 1:2, :, :], images_vis_ycrcb[:, 2:, :, :]),
+                    dim=1,
+                )
+                fusion_image = YCrCb2RGB(fusion_ycrcb)
+                ones = torch.ones_like(fusion_image)
+                zeros = torch.zeros_like(fusion_image)
+                fusion_image = torch.where(fusion_image > ones, ones, fusion_image)
+                fusion_image = torch.where(fusion_image < zeros, zeros, fusion_image)
+                fused_image = fusion_image.cpu().numpy()
+                fused_image = np.uint8(255.0 * fused_image)
+
+                fused_image = fused_image.transpose((0, 2, 3, 1))
+                fused_image = (fused_image - np.min(fused_image)) / (
+                        np.max(fused_image) - np.min(fused_image)
+                )
+
+                fused_image = np.uint8(255.0 * fused_image)
+                for k in range(len(name)):
+                    image = fused_image[k, :, :, :]
+                    image = Image.fromarray(image)
+                    save_path = os.path.join('/user33/objectdetection/test_all/Fused_images/', name[k])
+                    image.save(save_path)
+                    print('Fusion {0} Sucessfully!'.format(save_path))
+
+
+def YCrCb2RGB(input_im):
+    device = torch.device("cuda:{}".format(args.gpu) if torch.cuda.is_available() else "cpu")
+    im_flat = input_im.transpose(1, 3).transpose(1, 2).reshape(-1, 3)
+    mat = torch.tensor(
+        [[1.0, 1.0, 1.0], [1.403, -0.714, 0.0], [0.0, -0.344, 1.773]]
+    ).to(device)
+    bias = torch.tensor([0.0 / 255, -0.5, -0.5]).to(device)
+    temp = (im_flat + bias).mm(mat).to(device)
+    out = (
+        temp.reshape(
+            list(input_im.size())[0],
+            list(input_im.size())[2],
+            list(input_im.size())[3],
+            3,
+        )
+        .transpose(1, 3)
+        .transpose(2, 3)
+    )
+    return out
+
+def RGB2YCrCb(input_im):
+    device = torch.device("cuda:{}".format(args.gpu) if torch.cuda.is_available() else "cpu")
+    im_flat = input_im.transpose(1, 3).transpose(1, 2).reshape(-1, 3)  # (nhw,c)
+    R = im_flat[:, 0]
+    G = im_flat[:, 1]
+    B = im_flat[:, 2]
+    Y = 0.299 * R + 0.587 * G + 0.114 * B
+    Cr = (R - Y) * 0.713 + 0.5
+    Cb = (B - Y) * 0.564 + 0.5
+    Y = torch.unsqueeze(Y, 1)
+    Cr = torch.unsqueeze(Cr, 1)
+    Cb = torch.unsqueeze(Cb, 1)
+    temp = torch.cat((Y, Cr, Cb), dim=1).to(device)
+    out = (
+        temp.reshape(
+            list(input_im.size())[0],
+            list(input_im.size())[2],
+            list(input_im.size())[3],
+            3,
+        )
+        .transpose(1, 3)
+        .transpose(2, 3)
+    )
+    return out
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Run SeAFusiuon with pytorch')
+    parser.add_argument('--model_name', '-M', type=str, default='SeAFusion')
+    parser.add_argument('--batch_size', '-B', type=int, default=1)
+    parser.add_argument('--gpu', '-G', type=int, default=0)
+    parser.add_argument('--num_workers', '-j', type=int, default=8)
+    args = parser.parse_args()
+    n_class = 9
+    seg_model_path = './checkpoint/model-fusion_add_final2.pth'
+    fusion_model_path = './checkpoint/modelfusion-final2.pth'
+    print('| testing %s on GPU #%d with pytorch' % (args.model_name, args.gpu))
+    model = Fusion_Network3_ac()
+    model_seg = Network3('mit_b3', 9).cuda()
+    model.load_state_dict(torch.load(fusion_model_path))
+    model_seg.load_state_dict(torch.load(seg_model_path))
+    val_fusion_train(model,model_seg,0)
