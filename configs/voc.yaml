@@ -1,0 +1,32 @@
+exp: 
+  backbone: mit_b3
+
+dataset:
+  root_dir: /user33/objectdetection/train_all/
+  name_list_dir: ./
+  num_classes: 9
+  crop_size: 480
+  resize_range: [480,640]
+  rescale_range: [0.5, 2.0]
+  ignore_index: 255
+
+train:
+  split: train
+  samples_per_gpu: 4
+  max_iters: 160000
+  eval_iters: 5000
+  log_iters: 50
+
+val:
+  split: val
+
+optimizer:
+  type: AdamW
+  learning_rate: 8e-5
+  betas: [0.9, 0.999]
+  weight_decay: 0.01
+
+scheduler:
+  warmup_iter: 3000
+  warmup_ratio: 1e-6
+  power: 1.0
