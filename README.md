@@ -1,12 +1,5 @@
 # SegMiF
 
-
-![visitors](https://visitor-badge.glitch.me/badge?page_id=JinyuanLiu-CV.TarDAL)
-
-Jinyuan Liu, Xin Fan*, Zhangbo Huang, Guanyao Wu, Risheng Liu , Wei Zhong, Zhongxuan Luo,**“Target-aware Dual
-Adversarial Learning and a Multi-scenario Multi-Modality Benchmark to Fuse Infrared and Visible for Object Detection”**,
-IEEE/CVF Conference on Computer Vision and Pattern Recognition **(CVPR)**, 2022. **(Oral)**
-
 ![visitors](https://visitor-badge.glitch.me/badge?page_id=JinyuanLiu-CV.SegMiF)
 Jinyuan Liu, Zhu Liu, Guanyao Wu, Long Ma, Risheng Liu, Wei Zhong, Zhongxuan Luo,  Xin Fan*,**“Multi-interactive Feature Learning and a Full-time Multi-modality Benchmark for Image Fusion and Segmentation”**, International Conference on Computer Vision **(ICCV)**, 2023. **(Oral)**
 
