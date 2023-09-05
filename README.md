@@ -15,7 +15,7 @@ The preview of our FMB dataset is as follows.
 
 ---
 
-![preview](assets/overview.pdf)
+![preview](assets/overview.png)
  
 ---
 
