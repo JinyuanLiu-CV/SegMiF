@@ -21,6 +21,8 @@ The preview of our FMB dataset is as follows.
 
 ### Download
 - [*[Google Drive]*](https://drive.google.com/drive/folders/1T_jVi80tjgyHTQDpn-TjfySyW4CK1LlF?usp=sharing)
+- [*[Baidu Yun]*](https://pan.baidu.com/s/1k7PgCsSJVZJIoIhgMjWxNg?pwd=IVIF)
+
 
 <h2> <p align="center"> SegMiF Fusion </p> </h2>  
 
