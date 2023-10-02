@@ -1,6 +1,5 @@
 # SegMiF
 
-![visitors](https://visitor-badge.glitch.me/badge?page_id=JinyuanLiu-CV.SegMiF)
 Jinyuan Liu, Zhu Liu, Guanyao Wu, Long Ma, Risheng Liu, Wei Zhong, Zhongxuan Luo,  Xin Fan*,**“Multi-interactive Feature Learning and a Full-time Multi-modality Benchmark for Image Fusion and Segmentation”**, International Conference on Computer Vision **(ICCV)**, 2023. **(Oral)**
 
 - [*[ArXiv]*](https://arxiv.org/abs/2308.02097)
