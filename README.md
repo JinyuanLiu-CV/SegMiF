@@ -53,7 +53,7 @@ If this work has been helpful to you, please feel free to cite our paper!
 
 ```
 @inproceedings{liu2023segmif,
-  title={ulti-interactive Feature Learning and a Full-time Multi-modality Benchmark for Image Fusion and Segmentation},
+  title={Multi-interactive Feature Learning and a Full-time Multi-modality Benchmark for Image Fusion and Segmentation},
   author={Liu, Jinyuan and Liu, Zhu and Wu, Guanyao and Ma, Long and Liu, Risheng and Zhong, Wei and Luo, Zhongxuan and Fan, Xin},
   booktitle={International Conference on Computer Vision},
   year={2023}
